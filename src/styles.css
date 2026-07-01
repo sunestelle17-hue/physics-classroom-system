@@ -50,3 +50,24 @@ input[type="checkbox"] { height: 20px; width: 20px; }
   .status-grid { grid-template-columns: repeat(5, 1fr); }
   .app { padding-top: 24px; }
 }
+.section-title { align-items: start; display: flex; gap: 12px; justify-content: space-between; }
+.section-title p { color: #64748b; font-size: 13px; margin-bottom: 0; }
+.manager-actions, .inline-form, .section-title > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
+.manager button, .feedback button { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; color: #1d4ed8; font-weight: 800; min-height: 38px; padding: 0 12px; }
+.manager button.danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.manage-grid { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 14px; }
+.inline-form input, .json-box, .manager textarea, .feedback textarea { background: #f8fbff; border: 1px solid #cbd9ee; border-radius: 14px; padding: 10px 12px; width: 100%; }
+.inline-form input { min-height: 42px; }
+.inline-form input { flex: 1 1 150px; }
+.manager textarea, .json-box, .feedback textarea { margin-top: 8px; resize: vertical; }
+.json-box { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.empty { color: #64748b; font-weight: 800; text-align: center; }
+.feedback textarea { min-height: 120px; }
+.copy-tip { color: #15803d; font-size: 13px; font-weight: 800; margin: 8px 0 0; }
+@media (min-width: 720px) {
+  .manage-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+  .section-title { display: block; }
+  .manager-actions, .section-title > div:last-child { margin-top: 10px; }
+}
