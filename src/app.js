@@ -18,6 +18,14 @@ const STATUS_OPTIONS = [
   { key: 'wrong', label: '×', text: '错误' },
   { key: 'unfinished', label: '—', text: '未完成' },
 ];
+const FEEDBACK_MODES = [
+  { key: 'concise', label: '简洁版', rows: 5 },
+  { key: 'natural', label: '自然详细版', rows: 7 },
+  { key: 'professional', label: '专业版', rows: 9 },
+];
+const DEFAULT_FEEDBACK_MODE = 'natural';
+function normalizeFeedbackMode(mode) { return mode === 'detailed' ? 'natural' : (FEEDBACK_MODES.some(item => item.key === mode) ? mode : DEFAULT_FEEDBACK_MODE); }
+
 const EMPTY_DATA = { grades: [], lessons: [
   { id: 'lesson-01', name: '第 1 讲：运动和速度', modules: [
     { id: 'm-basic', name: '基础概念', questions: ['匀速直线运动判断', '速度公式应用', '单位换算'] },
@@ -79,7 +87,12 @@ function current() {
   const module = lesson?.modules.find(m => m.id === state.moduleId) || lesson?.modules[0];
   const student = klass?.students[state.studentIndex];
   const recordKey = klass && lesson && student ? `${klass.id}:${lesson.id}:${student.id}` : '';
-  const record = { questions: {}, moduleUnassigned: {}, performance: [], note: '', feedbackDraft: '', feedbackMode: 'detailed', ...(appData.records[recordKey] || {}) };
+  const rawRecord = appData.records[recordKey] || {};
+  const feedbackMode = normalizeFeedbackMode(rawRecord.feedbackMode);
+  const legacyMode = normalizeFeedbackMode(rawRecord.feedbackMode || 'natural');
+  const feedbackDrafts = { ...(rawRecord.feedbackDrafts || {}) };
+  if (rawRecord.feedbackDraft && !feedbackDrafts[legacyMode]) feedbackDrafts[legacyMode] = rawRecord.feedbackDraft;
+  const record = { questions: {}, moduleUnassigned: {}, performance: [], note: '', ...rawRecord, feedbackMode, feedbackDrafts, feedbackDraft: feedbackDrafts[feedbackMode] || '' };
   return { grade, klass, lesson, module, student, recordKey, record };
 }
 function updateRecord(updater, shouldRender = true) {
@@ -131,7 +144,7 @@ const REASON_META = {
 const TAG_SENTENCES = {
   主动回应: '今天课堂回应比较积极', 主动表达: '愿意主动说出自己的想法', 愿意参与讨论: '今天参与讨论的状态不错', 补充同学思路: '能够在同学回答后补充自己的理解', 被点名后能回应: '点到以后能够跟上', 需要点名提醒: '有时需要点一下才能重新进入状态', 有自己的想法: '能看出来他有自己的思路', 表达完整: '回答问题时思路比较完整', 回答简短: '思路有，但表达还可以再完整一些', 害羞慢热: '前面稍微慢热一些，后面状态逐渐起来', 注意力飘: '中间有一小段注意力不太集中', 有精神: '今天整体很有精神，进入课堂也比较快', 状态不错: '今天整体课堂状态不错，做题比较投入', 进入状态快: '今天进入状态比较快', 后半段状态下降: '前半段状态不错，后半段专注度有一点下降', 打瞌睡: '今天中间有一段明显犯困，注意力受到了一些影响', 明显犯困: '今天精神状态一般，有几次需要提醒才能重新跟上', 今天比较疲惫: '今天看起来有些疲惫，不过提醒后仍能继续完成', 注意力不集中: '中间有一小段注意力不太集中', 容易走神: '做题时偶尔会走神，思路容易被打断', 需要多次提醒: '今天有几次需要提醒后才能重新进入状态', 状态慢热: '前面稍微慢热一些，后面状态逐渐起来', 情绪低落: '今天情绪状态偏低一些，课堂中尽量保持了跟进', 做题有点急: '今天做题速度比较快，但有些细节因此没有看清', 做题比较稳: '今天做题节奏比较稳，过程也比较清楚', 节奏偏慢: '今天做题节奏稍慢，不过思路基本能够跟上', 节奏偏快: '今天整体反应较快，但要注意不要因为快而漏条件', 能坚持完成: '今天遇到任务基本能坚持完成', 容易放弃: '遇到稍难的题时容易停下来，需要再多坚持一下', 遇到难题愿意继续想: '今天遇到难题时愿意继续尝试，这一点很好'
 };
-const STATUS_TEXT = { hint: '提示后正确', wrong: '错误或不会', unfinished: '未完成或缺席' };
+const STATUS_TEXT = { hint: '提醒后能够反应过来', wrong: '需要订正', unfinished: '未完成或缺席' };
 const REASON_GROUPS = [['审题', '条件漏看', '关键词没抓住', '题干要求看反', '选择正确项 / 错误项看反'], ['读不懂题目', '不知道题目在问什么', '题目读完没有形成思路'], ['数字抄错', '抄错数字', '条件抄错'], ['计算', '代错数据', '计算选项代入错误', '小数点错误'], ['填空答案不完整', '表述不完整', '口头会但写不完整'], ['作图', '力臂垂足漏画', '垂足画错', '多画垂足']];
 function reasonMeta(reason) { const meta = REASON_META[reason] || REASON_META.其他; return { text: meta[0], advice: meta[1] }; }
 function polishNote(note) {
@@ -169,7 +182,7 @@ function representativeQuestions(lesson, record) {
 function questionDetail(item) {
   const meta = reasonMeta(item.reason);
   const error = item.matchedNote || meta.text;
-  return `${item.moduleName}·第${item.number}题《${item.title}》：${STATUS_TEXT[item.status]}，${error}。${meta.advice}。`;
+  return `${item.moduleName}·第${item.number}题：${STATUS_TEXT[item.status]}，${error}。${meta.advice}。`;
 }
 function summarizeQuestions(lesson, record) {
   const counts = { correct: 0, hint: 0, wrong: 0, unfinished: 0 };
@@ -192,31 +205,82 @@ function feedbackAdvice(record, reps, reasons) {
   reasons.forEach(r => list.push(reasonMeta(r).advice));
   return [...new Set(list)].slice(0, 2);
 }
-function generateFeedback(mode = current().record.feedbackMode || 'detailed') {
+function hasProblemText(text) { return /(错|漏|急|慢|不够|需要|注意|提醒|问题|失误|不会|未完成|犯困|走神)/.test(text); }
+function sentence(text) { const value = String(text || '').trim().replace(/[。；;\s]+$/g, ''); return value ? `${value}。` : ''; }
+function currentFeedbackDraft(record) { return (record.feedbackDrafts || {})[record.feedbackMode] || ''; }
+function draftBadge(record, mode) { return (record.feedbackDrafts || {})[mode] ? '<em>已有草稿</em>' : ''; }
+function feedbackContext() {
   const { lesson, record, student } = current();
-  if (!student) return '';
   const { counts, reasons } = summarizeQuestions(lesson, record);
   const attempted = counts.correct + counts.hint + counts.wrong + counts.unfinished;
   const good = counts.correct >= Math.max(1, counts.hint + counts.wrong);
   const weak = counts.wrong > counts.correct && attempted > 0;
-  const opening = pick(weak ? PHRASES.weak : good ? PHRASES.good : PHRASES.steady, student.id);
+  const opening = pick(weak ? PHRASES.weak : good ? PHRASES.good : PHRASES.steady, student?.id || 'student');
   const statusParts = (record.performance || []).map(tag => TAG_SENTENCES[tag]).filter(Boolean).slice(0, 2);
-  const subjectParts = [];
-  if (counts.correct > 0 && good) subjectParts.push(pick(PHRASES.independent, 'ind'));
-  if (counts.hint > 0) subjectParts.push(pick(PHRASES.hint, 'hint'));
-  if (!attempted) subjectParts.push('今天记录不多，先从课堂状态看，整体还能跟着走');
-  reasons.slice(0, 2).forEach(r => subjectParts.push(reasonMeta(r).text));
-  const note = polishNote(record.note || '');
   const reps = representativeQuestions(lesson, record);
   const advice = feedbackAdvice(record, reps, reasons);
-  const bodyParts = [opening, ...subjectParts.slice(0, 2), ...statusParts.slice(0, 1)];
-  if (note && !/第\s*\d+\s*题/.test(note)) bodyParts.push(note);
-  const body = bodyParts.join('，') + (advice[0] && mode === 'concise' ? `，${advice[0]}。` : '。');
-  if (mode === 'concise') return body.length > 105 ? `${body.slice(0, 102)}。` : body;
-  const sections = [body];
-  if (reps.length) sections.push(`本节重点题目：\n${reps.map((item, i) => `${i + 1}. ${questionDetail(item)}`).join('\n')}`);
-  if (advice.length) sections.push(`后续建议：${advice.join('；')}。`);
-  return sections.join('\n');
+  const note = polishNote(record.note || '');
+  return { lesson, record, student, counts, reasons, attempted, good, weak, opening, statusParts, reps, advice, note };
+}
+function naturalQuestionLine(item, includeAdvice = false) {
+  const meta = reasonMeta(item.reason);
+  const error = item.matchedNote || meta.text;
+  const tail = item.status === 'hint' ? '，稍微点一下思路就能接上' : '';
+  return `${item.moduleName}第${item.number}题主要是${error}${tail}${includeAdvice ? `，${meta.advice}` : ''}`;
+}
+function generateConciseFeedback(ctx) {
+  const parts = [ctx.opening];
+  if (ctx.statusParts[0]) parts.push(ctx.statusParts[0]);
+  if (ctx.counts.hint > 0) parts.push('有几道题提醒后能够反应过来');
+  if (ctx.note && hasProblemText(ctx.note)) parts.push(ctx.note);
+  else if (ctx.reps[0]) parts.push(reasonMeta(ctx.reps[0].reason).text);
+  else if (ctx.reasons[0]) parts.push(reasonMeta(ctx.reasons[0]).text);
+  const advice = ctx.advice[0] || (ctx.attempted ? '后面做题再慢一点，把条件看完整就可以了' : '后面继续保持课堂跟进和及时反馈');
+  parts.push(advice);
+  let body = sentence([...new Set(parts.filter(Boolean))].slice(0, 4).join('，'));
+  if (body.length > 90) body = sentence(body.slice(0, 87));
+  return body;
+}
+function generateNaturalFeedback(ctx) {
+  const first = [ctx.opening];
+  if (ctx.counts.correct > 0 && ctx.good) first.push(pick(PHRASES.independent, 'ind'));
+  if (ctx.counts.hint > 0) first.push('有些题提醒后能够反应过来');
+  if (!ctx.attempted) first.push('今天记录不多，先从课堂状态看整体还能跟着走');
+  if (ctx.statusParts[0]) first.push(ctx.statusParts[0]);
+  if (ctx.note && !/第\s*\d+\s*题/.test(ctx.note)) first.push(ctx.note);
+  const repLines = ctx.reps.slice(0, 3).map((item, index) => naturalQuestionLine(item, index === ctx.reps.length - 1));
+  const second = [];
+  if (repLines.length) second.push(`${repLines.join('；')}。`);
+  if (ctx.advice.length) second.push(`后面${ctx.advice.join('，')}就可以了。`);
+  return [sentence(first.join('，')), second.join('')].filter(Boolean).join('\n');
+}
+function generateProfessionalFeedback(ctx) {
+  const sections = [];
+  const classParts = [ctx.opening];
+  if (ctx.statusParts.length) classParts.push(...ctx.statusParts);
+  if (ctx.counts.correct > 0 && ctx.good) classParts.push('大部分题目能够独立完成');
+  if (ctx.counts.hint > 0) classParts.push('个别题目稍微点一下思路就能接上');
+  if (!ctx.attempted) classParts.push('今天题目记录不多，先以课堂状态和备注为主');
+  if (ctx.note && !/第\s*\d+\s*题/.test(ctx.note)) classParts.push(ctx.note);
+  sections.push(`课堂情况：\n${sentence(classParts.join('，'))}`);
+  if (ctx.reps.length) {
+    const items = ctx.reps.slice(0, 3).map(item => {
+      const meta = reasonMeta(item.reason);
+      const error = item.matchedNote || meta.text;
+      return `- ${item.moduleName}·第${item.number}题：${STATUS_TEXT[item.status]}，${error}。`;
+    });
+    sections.push(`重点题目：\n${items.join('\n')}`);
+  }
+  if (ctx.advice.length) sections.push(`后续建议：\n${ctx.advice.slice(0, 2).join('；')}。`);
+  return sections.join('\n\n');
+}
+function generateFeedback(mode = current().record.feedbackMode || DEFAULT_FEEDBACK_MODE) {
+  const ctx = feedbackContext();
+  if (!ctx.student) return '';
+  const normalizedMode = normalizeFeedbackMode(mode);
+  if (normalizedMode === 'concise') return generateConciseFeedback(ctx);
+  if (normalizedMode === 'professional') return generateProfessionalFeedback(ctx);
+  return generateNaturalFeedback(ctx);
 }
 
 function rosterManagerHtml(grade, klass) {
@@ -228,8 +292,8 @@ function render() {
   const studentCount = klass?.students.length || 0;
   const studentLabel = student ? `${state.studentIndex + 1} / ${studentCount}` : '0 / 0';
   const perfMarked = (record.performance || []).length || record.note;
-  const feedbackMarked = record.feedbackDraft;
-  document.querySelector('#app').innerHTML = `<div class="sticky-summary"><strong>${escapeHtml(klass?.name || '未选班级')}</strong><span>${escapeHtml(student?.name || '未选学生')}</span><span>${escapeHtml(lesson?.name || '未选讲次')}</span><span>${escapeHtml(module?.name || '未选模块')}</span><b>${prog.done}/${prog.total}</b></div><header class="hero"><div><p class="eyebrow">本地原型 · 自动保存</p><h1>物理课堂登记</h1></div><button class="manage-toggle" data-action="toggle-manager">${state.managerOpen ? '收起管理' : '管理'}</button></header>${state.managerOpen ? rosterManagerHtml(grade, klass) : ''}<section class="card selectors"><div class="current-student"><span>当前学生</span><strong>${escapeHtml(student?.name || '请先添加学生')}</strong><em>${studentLabel}</em></div>${selectHtml('年级', 'grade', state.gradeId, appData.roster.map(g => ({ value: g.id, label: g.name })))}${selectHtml('班级', 'class', state.classId, (grade?.classes || []).map(c => ({ value: c.id, label: c.name })))}${selectHtml('讲次', 'lesson', state.lessonId, appData.lessons.map(l => ({ value: l.id, label: l.name })))}${selectHtml('模块', 'module', state.moduleId, (lesson?.modules || []).map(m => ({ value: m.id, label: m.name })))}${selectHtml('快速跳转', 'student', state.studentIndex, (klass?.students || []).map((s, index) => ({ value: index, label: s.name })))}</section>${!student ? '<section class="card empty">请点击“管理”新增年级、班级和学生。</section>' : `<section class="card student-switch"><button data-action="prev-student">上一位</button><div><strong>${escapeHtml(student.name)}</strong><span>第 ${studentLabel} 位</span></div><button data-action="next-student">下一位</button></section><section class="card module-head"><button data-action="prev-module">上一个模块</button><div><h2>${escapeHtml(module.name)}</h2><p>${escapeHtml(lesson.name)}</p></div><button data-action="next-module">下一个模块</button><label class="switch"><input id="module-unassigned" type="checkbox" ${record.moduleUnassigned[module.id] ? 'checked' : ''}> 模块未布置</label></section><section class="question-list">${module.questions.map((title, index) => questionHtml(module, title, index, record)).join('')}</section><section class="card collapse"><button class="collapse-title" data-action="toggle-performance"><span>课堂表现 ${perfMarked ? '<em>已记录</em>' : ''}</span><b>${state.performanceOpen ? '收起' : '展开'}</b></button>${state.performanceOpen ? `<div class="tag-grid">${PERFORMANCE_TAGS.map(tag => `<button data-tag="${tag}" class="${record.performance.includes(tag) ? 'active' : ''}">${tag}</button>`).join('')}</div><label class="note-label">自由备注<input id="note" value="${escapeHtml(record.note)}" placeholder="例如：力臂漏画垂足，公式写对但计算错。"></label>` : ''}</section><section class="card feedback collapse"><button class="collapse-title" data-action="toggle-feedback"><span>家长反馈 ${feedbackMarked ? '<em>已有草稿</em>' : ''}</span><b>${state.feedbackOpen ? '收起' : '展开'}</b></button>${state.feedbackOpen ? `<div class="feedback-toolbar"><div class="mode-switch"><button data-mode="detailed" class="${(record.feedbackMode || 'detailed') === 'detailed' ? 'active' : ''}">详细版</button><button data-mode="concise" class="${record.feedbackMode === 'concise' ? 'active' : ''}">简洁版</button></div><div class="feedback-actions"><button data-action="generate-feedback">重新生成</button><button data-action="copy-feedback">一键复制</button></div></div><textarea id="feedback-draft" rows="${(record.feedbackMode || 'detailed') === 'detailed' ? 8 : 5}" placeholder="点击重新生成草稿，可继续手动编辑；系统不会自动发送。">${escapeHtml(record.feedbackDraft)}</textarea><p id="copy-tip" class="copy-tip"></p>` : ''}</section><nav class="bottom-actions"><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="open-performance">课堂表现</button><button data-action="open-feedback-generate">生成反馈</button></nav>`}`;
+  const feedbackMarked = Object.values(record.feedbackDrafts || {}).some(Boolean);
+  document.querySelector('#app').innerHTML = `<div class="sticky-summary"><strong>${escapeHtml(klass?.name || '未选班级')}</strong><span>${escapeHtml(student?.name || '未选学生')}</span><span>${escapeHtml(lesson?.name || '未选讲次')}</span><span>${escapeHtml(module?.name || '未选模块')}</span><b>${prog.done}/${prog.total}</b></div><header class="hero"><div><p class="eyebrow">本地原型 · 自动保存</p><h1>物理课堂登记</h1></div><button class="manage-toggle" data-action="toggle-manager">${state.managerOpen ? '收起管理' : '管理'}</button></header>${state.managerOpen ? rosterManagerHtml(grade, klass) : ''}<section class="card selectors"><div class="current-student"><span>当前学生</span><strong>${escapeHtml(student?.name || '请先添加学生')}</strong><em>${studentLabel}</em></div>${selectHtml('年级', 'grade', state.gradeId, appData.roster.map(g => ({ value: g.id, label: g.name })))}${selectHtml('班级', 'class', state.classId, (grade?.classes || []).map(c => ({ value: c.id, label: c.name })))}${selectHtml('讲次', 'lesson', state.lessonId, appData.lessons.map(l => ({ value: l.id, label: l.name })))}${selectHtml('模块', 'module', state.moduleId, (lesson?.modules || []).map(m => ({ value: m.id, label: m.name })))}${selectHtml('快速跳转', 'student', state.studentIndex, (klass?.students || []).map((s, index) => ({ value: index, label: s.name })))}</section>${!student ? '<section class="card empty">请点击“管理”新增年级、班级和学生。</section>' : `<section class="card student-switch"><button data-action="prev-student">上一位</button><div><strong>${escapeHtml(student.name)}</strong><span>第 ${studentLabel} 位</span></div><button data-action="next-student">下一位</button></section><section class="card module-head"><button data-action="prev-module">上一个模块</button><div><h2>${escapeHtml(module.name)}</h2><p>${escapeHtml(lesson.name)}</p></div><button data-action="next-module">下一个模块</button><label class="switch"><input id="module-unassigned" type="checkbox" ${record.moduleUnassigned[module.id] ? 'checked' : ''}> 模块未布置</label></section><section class="question-list">${module.questions.map((title, index) => questionHtml(module, title, index, record)).join('')}</section><section class="card collapse"><button class="collapse-title" data-action="toggle-performance"><span>课堂表现 ${perfMarked ? '<em>已记录</em>' : ''}</span><b>${state.performanceOpen ? '收起' : '展开'}</b></button>${state.performanceOpen ? `<div class="tag-grid">${PERFORMANCE_TAGS.map(tag => `<button data-tag="${tag}" class="${record.performance.includes(tag) ? 'active' : ''}">${tag}</button>`).join('')}</div><label class="note-label">自由备注<input id="note" value="${escapeHtml(record.note)}" placeholder="例如：力臂漏画垂足，公式写对但计算错。"></label>` : ''}</section><section class="card feedback collapse"><button class="collapse-title" data-action="toggle-feedback"><span>家长反馈 ${feedbackMarked ? '<em>已有草稿</em>' : ''}</span><b>${state.feedbackOpen ? '收起' : '展开'}</b></button>${state.feedbackOpen ? `<div class="feedback-toolbar"><div class="mode-switch">${FEEDBACK_MODES.map(item => `<button data-mode="${item.key}" class="${record.feedbackMode === item.key ? 'active' : ''}">${item.label}${draftBadge(record, item.key)}</button>`).join('')}</div><div class="feedback-actions"><button data-action="generate-feedback">重新生成</button><button data-action="copy-feedback">一键复制</button></div></div><textarea id="feedback-draft" rows="${(FEEDBACK_MODES.find(item => item.key === record.feedbackMode) || FEEDBACK_MODES[1]).rows}" placeholder="点击重新生成当前版本草稿，可继续手动编辑；系统不会自动发送。">${escapeHtml(currentFeedbackDraft(record))}</textarea><p id="copy-tip" class="copy-tip"></p>` : ''}</section><nav class="bottom-actions"><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="open-performance">课堂表现</button><button data-action="open-feedback-generate">生成反馈</button></nav>`}`;
   bindEvents();
 }
 
@@ -255,8 +319,8 @@ function bindEvents() {
   document.querySelectorAll('[data-reason]').forEach(button => button.onclick = () => { const [id, reason] = button.dataset.reason.split(':'); const reasons = current().record.questions[id]?.reasons || []; patchQuestion(id, { reasons: reasons.includes(reason) ? reasons.filter(item => item !== reason) : [...reasons, reason] }); });
   document.querySelectorAll('[data-tag]').forEach(button => button.onclick = () => { const tag = button.dataset.tag; updateRecord(record => ({ ...record, performance: record.performance.includes(tag) ? record.performance.filter(item => item !== tag) : [...record.performance, tag] })); });
   document.querySelector('#note')?.addEventListener('input', e => updateRecord(record => ({ ...record, note: e.target.value }), false));
-  document.querySelector('#feedback-draft')?.addEventListener('input', e => updateRecord(record => ({ ...record, feedbackDraft: e.target.value }), false));
-  document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => updateRecord(record => ({ ...record, feedbackMode: button.dataset.mode, feedbackDraft: generateFeedback(button.dataset.mode) })));
+  document.querySelector('#feedback-draft')?.addEventListener('input', e => updateRecord(record => ({ ...record, feedbackDraft: e.target.value, feedbackDrafts: { ...(record.feedbackDrafts || {}), [record.feedbackMode]: e.target.value } }), false));
+  document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => updateRecord(record => ({ ...record, feedbackMode: normalizeFeedbackMode(button.dataset.mode), feedbackDraft: (record.feedbackDrafts || {})[normalizeFeedbackMode(button.dataset.mode)] || '' })));
   document.querySelectorAll('[data-action]').forEach(button => button.onclick = () => handleAction(button.dataset.action));
 }
 function handleAction(action) {
@@ -266,7 +330,7 @@ function handleAction(action) {
   if (action === 'toggle-performance') { state.performanceOpen = !state.performanceOpen; persist(); render(); return; }
   if (action === 'toggle-feedback') { state.feedbackOpen = !state.feedbackOpen; persist(); render(); return; }
   if (action === 'open-performance') { state.performanceOpen = true; persist(); render(); document.querySelector('.collapse-title[data-action="toggle-performance"]')?.scrollIntoView({ block: 'center' }); return; }
-  if (action === 'open-feedback-generate') { state.feedbackOpen = true; updateRecord(record => ({ ...record, feedbackDraft: generateFeedback(record.feedbackMode || 'detailed') })); return; }
+  if (action === 'open-feedback-generate') { state.feedbackOpen = true; updateRecord(record => ({ ...record, feedbackMode: normalizeFeedbackMode(record.feedbackMode), feedbackDraft: (record.feedbackDrafts || {})[normalizeFeedbackMode(record.feedbackMode)] || '' })); return; }
   if (action === 'prev-student' || action === 'next-student') { const count = activeClass()?.students.length || 0; if (count) state.studentIndex = (state.studentIndex + (action === 'next-student' ? 1 : count - 1)) % count; persist(); render(); return; }
   if (action === 'prev-module' || action === 'next-module') { const lesson = current().lesson; const modules = lesson?.modules || []; const idx = modules.findIndex(m => m.id === state.moduleId); if (idx >= 0) state.moduleId = modules[(idx + (action === 'next-module' ? 1 : modules.length - 1)) % modules.length].id; persist(); render(); return; }
 
@@ -283,7 +347,7 @@ function handleAction(action) {
   if (action === 'export-json') { document.querySelector('#json-box').value = JSON.stringify(appData, null, 2); return; }
   if (action === 'import-json') { try { const data = JSON.parse(document.querySelector('#json-box').value); appData = { ...defaultData(), ...data, roster: normalizeRoster(data.roster), records: data.records || {} }; state = normalizeState(data.ui || {}); } catch { alert('JSON 格式不正确，未导入。'); return; } }
   if (action === 'clear-demo' && confirmTwice('清空演示年级、班级、学生和课堂登记数据？')) { appData = { ...defaultData(), roster: [], records: {} }; state = normalizeState({}); }
-  if (action === 'generate-feedback') { updateRecord(record => ({ ...record, feedbackDraft: generateFeedback(record.feedbackMode || 'detailed') })); return; }
+  if (action === 'generate-feedback') { updateRecord(record => { const mode = normalizeFeedbackMode(record.feedbackMode); const draft = generateFeedback(mode); return { ...record, feedbackMode: mode, feedbackDraft: draft, feedbackDrafts: { ...(record.feedbackDrafts || {}), [mode]: draft } }; }); return; }
   if (action === 'copy-feedback') { navigator.clipboard.writeText(document.querySelector('#feedback-draft').value); document.querySelector('#copy-tip').textContent = '已复制到剪贴板，不会自动发送。'; return; }
   saveRoster();
 }

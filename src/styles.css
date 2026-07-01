@@ -87,11 +87,14 @@ input[type="checkbox"] { height: 18px; width: 18px; }
   .manager-actions, .section-title > div:last-child { margin-top: 10px; }
 }
 .feedback-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin: 8px 0; }
-.mode-switch { background: #eef4ff; border: 1px solid #dbe7ff; border-radius: 999px; display: inline-flex; gap: 4px; padding: 4px; }
-.mode-switch button { background: transparent; border: 0; border-radius: 999px; color: #526071; font-weight: 900; min-height: 32px; padding: 0 12px; }
+.mode-switch { background: #eef4ff; border: 1px solid #dbe7ff; border-radius: 18px; display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; }
+.mode-switch button { background: transparent; border: 0; border-radius: 999px; color: #526071; font-weight: 900; min-height: 32px; padding: 0 10px; }
+.mode-switch em { background: #dcfce7; border-radius: 999px; color: #15803d; display: inline-block; font-size: 11px; font-style: normal; margin-left: 5px; padding: 2px 5px; }
+.mode-switch button.active em { background: rgba(255,255,255,.24); color: #fff; }
 .mode-switch button.active { background: #1d4ed8; color: white; }
 @media (max-width: 560px) {
   .feedback-toolbar { align-items: stretch; display: grid; grid-template-columns: 1fr; }
   .mode-switch, .feedback-actions { justify-content: center; }
+  .mode-switch button { flex: 1 1 auto; font-size: 13px; padding: 0 8px; }
   .tag-grid button, .reasons button { min-height: 34px; padding: 0 10px; }
 }
