@@ -632,3 +632,101 @@ handleAction = function(action) {
   return historicalHandleAction(action);
 };
 render();
+
+// --- Classroom registration / teacher workspace reorganization ---
+const classroomNormalizeState = normalizeState;
+normalizeState = function(candidate = {}) {
+  const base = classroomNormalizeState(candidate);
+  return { ...base,
+    sessionId: candidate.sessionId || base.sessionId || '',
+    currentView: candidate.currentView === 'teacher' ? 'teacher' : 'classroom',
+    activeModuleId: candidate.activeModuleId || '',
+    expandedModuleIds: Array.isArray(candidate.expandedModuleIds) ? candidate.expandedModuleIds : [],
+    activeTeacherPanel: candidate.activeTeacherPanel || 'feedback',
+    activeFeedbackMode: normalizeFeedbackMode(candidate.activeFeedbackMode || DEFAULT_FEEDBACK_MODE),
+    scrollToEmptySession: Boolean(candidate.scrollToEmptySession),
+  };
+};
+state = normalizeState(state);
+
+function classSessions(classId = state.classId) { return (appData.sessions || []).filter(s => s.classId === classId); }
+function pickSafeSession(classId = state.classId) {
+  const sessions = classSessions(classId).sort((a,b) => String(b.sessionDate || b.createdAt || '').localeCompare(String(a.sessionDate || a.createdAt || '')));
+  return sessions.find(s => s.status === '进行中') || sessions[0] || null;
+}
+currentSession = function() {
+  const safe = classSessions(state.classId).find(s => s.sessionId === state.sessionId) || pickSafeSession(state.classId);
+  if (safe && state.sessionId !== safe.sessionId) state.sessionId = safe.sessionId;
+  return safe;
+};
+function sessionModules(session, rec) {
+  const byId = new Map();
+  (session?.selectedQuestions || []).slice().sort((a,b)=>(a.sessionOrder||0)-(b.sessionOrder||0)).forEach(item => {
+    if (!item?.moduleId) return;
+    if (!byId.has(item.moduleId)) byId.set(item.moduleId, { moduleId:item.moduleId, moduleName:item.moduleName || '未命名模块', lessonName:item.lessonName || '未记录讲次', items:[] });
+    byId.get(item.moduleId).items.push(item);
+  });
+  return [...byId.values()].filter(m => m.items.length).map(m => { const done = m.items.filter(i => { const q = itemRecord(rec || {}, i); return q.status && q.status !== 'blank'; }).length; return { ...m, done, total:m.items.length, blank:m.items.length-done }; });
+}
+function ensureActiveModule(session, rec) {
+  const mods = sessionModules(session, rec); if (!mods.length) { state.activeModuleId = ''; return; }
+  if (!mods.some(m => m.moduleId === state.activeModuleId)) state.activeModuleId = (mods.find(m => m.blank > 0) || mods[0]).moduleId;
+  if (!state.expandedModuleIds?.length) state.expandedModuleIds = [state.activeModuleId];
+}
+function moduleProgressText(session, rec) { const m = sessionModules(session, rec).find(x => x.moduleId === state.activeModuleId); return m ? `${m.lessonName}｜${m.moduleName}｜${m.done} / ${m.total}题` : '请选择模块'; }
+function studentSessionProgress(session, rec) { const items = session?.selectedQuestions || []; const done = items.filter(i => { const q = itemRecord(rec || {}, i); return q.status && q.status !== 'blank'; }).length; return { total:items.length, done, blank:Math.max(0, items.length - done) }; }
+function homeworkSummaryHtml(session) { const students = activeClass()?.students || []; const checks = Object.values(session.homeworkChecks || {}).flatMap(v => Object.values(v || {})); const pending = checks.filter(c => !c.completionStatus || c.completionStatus === '暂未检查').length || Math.max(0, students.length * (session.homeworkAssigned?.length || 0) - checks.length); const correcting = checks.some(c => String(c.correctionStatus || '').includes('待') || String(c.correctionNote || '').includes('订正')); const recheck = checks.some(c => String(c.correctionStatus || '').includes('复查') || c.recheckDate); return `<section class="card compact-summary"><button class="collapse-title" data-action="open-teacher-homework"><span>作业简要摘要</span><b>进入工作台</b></button><p>上次作业待检查 ${pending} 人次｜本节已布置 ${session.homeworkAssigned?.length || 0} 项｜${correcting?'有待订正':'暂无待订正'}｜${recheck?'有待复查':'暂无待复查'}</p></section>`; }
+function emptySessionHtml(hasBrokenData = false) { return `<section id="empty-session" class="card empty-state"><h2>${hasBrokenData?'本节课堂已有题目，但题目数据读取失败。请不要清空数据，可尝试恢复最近备份。':'本节课堂尚未添加题目，请先选择讲次、模块或单独题目。'}</h2><div class="home-actions"><button data-action="add-questions">添加课堂题目</button><button data-action="add-questions">按讲次添加</button><button data-action="continue-last">继续上节课</button><button data-action="add-questions">自定义选题</button></div></section>`; }
+function moduleOverviewHtml(session, rec) { const mods = sessionModules(session, rec); return `<section id="module-overview" class="card"><h2>模块总览</h2><div class="module-tabs">${mods.map(m=>`<button data-jump-module="${escapeHtml(m.moduleId)}" class="${m.moduleId===state.activeModuleId?'active':''}"><strong>${escapeHtml(m.moduleName)}</strong><span>${escapeHtml(m.lessonName)}｜${m.total}题｜${m.done?`已登记${m.done}题`:'未开始'}</span></button>`).join('')}</div></section>`; }
+function classroomModuleHtml(session, rec, mod, readOnly) { const open = (state.expandedModuleIds || []).includes(mod.moduleId); return `<section id="module-${escapeHtml(mod.moduleId)}" class="card classroom-module ${mod.moduleId===state.activeModuleId?'active':''}"><div class="module-card-head"><div><h2>${escapeHtml(mod.moduleName)}</h2><p>来源：${escapeHtml(mod.lessonName)}｜本次课堂 ${mod.total} 题｜当前学生：${mod.done} / ${mod.total}题已登记</p></div><div class="module-actions"><button data-module-all="${escapeHtml(mod.moduleId)}" ${readOnly?'disabled':''}>本模块全对</button><button data-module-clear="${escapeHtml(mod.moduleId)}" ${readOnly?'disabled':''}>清空本模块</button><button data-toggle-module="${escapeHtml(mod.moduleId)}">${open?'收起':'展开'}</button></div></div>${open ? `<div class="question-list">${mod.items.map((item,idx)=>sessionQuestionHtml(item, rec, idx, readOnly)).join('') || '<p class="empty-summary">该模块暂无可登记题目</p>'}</div>` : ''}</section>`; }
+function classroomHtml(session, student, rec) { ensureActiveModule(session, rec); const readOnly = session.status === '已结束' && !state.editHistory; const prog = studentSessionProgress(session, rec); const mods = sessionModules(session, rec); const hasLab = (session.selectedQuestions||[]).some(i => ['实验题','作图题'].includes(i.primaryType) || (i.typeTags||[]).includes('实验')); return `<section class="card session-head"><div><h2>${escapeHtml(session.sessionName)}</h2><p>${escapeHtml(session.sessionDate)} · ${escapeHtml(session.status)} · 当前学生：${escapeHtml(student.name)}</p><p>课堂 → ${escapeHtml(mods[0]?.lessonName || '未选讲次')} → ${escapeHtml(state.activeModuleId ? (mods.find(m=>m.moduleId===state.activeModuleId)?.moduleName || '未选模块') : '未选模块')} → 题目</p></div><div><button data-action="scroll-questions">回到题目登记</button><button data-action="add-questions">添加课堂题目</button><button data-action="go-teacher">进入教师工作台</button><button data-action="finish-session">结束课堂</button>${readOnly ? '<button data-action="edit-history">编辑历史记录</button>' : ''}</div></section><section id="question-register" class="card question-register"><h2>题目情况登记</h2><p>本节共${prog.total}题｜已登记${prog.done}题｜未登记${prog.blank}题</p><progress max="${prog.total||1}" value="${prog.done}"></progress></section>${!prog.total ? emptySessionHtml(false) : `${moduleOverviewHtml(session, rec)}${mods.map(m=>classroomModuleHtml(session, rec, m, readOnly)).join('')}`}<section class="card collapse"><button class="collapse-title" data-action="toggle-performance"><span>课堂表现</span><b>${state.performanceOpen?'收起':'展开'}</b></button>${state.performanceOpen ? `<div class="selected-summary"><strong>已选：</strong>${selectedChips(rec.performance||[], 'data-tag')}</div><div class="tag-grid compact-grid">${PERFORMANCE_TAGS.slice(0,18).map(t=>`<button data-tag="${t}" class="${(rec.performance||[]).includes(t)?'active':''}">${t}</button>`).join('')}</div>`:''}</section><section class="card"><label class="note-label">学生自由备注<input id="note" value="${escapeHtml(rec.note||'')}"></label></section>${homeworkSummaryHtml(session)}${hasLab?'<section class="card warn">本节包含实验内容，课后可补充器材和实验效果。</section>':''}${(session.historicalTeachingTips||[]).length?'<section class="card compact-summary"><button class="collapse-title" data-action="open-teacher-history"><span>一期上过相同内容，有教学复盘可查看。</span><b>查看</b></button></section>':''}<section class="card"><button data-action="go-teacher">进入教师工作台</button></section><nav class="bottom-actions"><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="scroll-modules">模块</button><button data-action="toggle-performance">课堂表现</button><button data-action="go-teacher">教师工作台</button></nav>`; }
+function feedbackPanelHtml(session, student, rec) { const mode = normalizeFeedbackMode(rec.feedbackMode || state.activeFeedbackMode); rec.feedbackDrafts ||= {}; return `<div class="feedback-toolbar"><div class="mode-switch">${FEEDBACK_MODES.map(item=>`<button data-mode="${item.key}" class="${mode===item.key?'active':''}">${item.label}${rec.feedbackDrafts[item.key]?'<em>已有草稿</em>':''}</button>`).join('')}</div><div class="feedback-actions"><button data-action="generate-feedback">重新生成</button><button data-action="copy-feedback">一键复制</button></div></div><label class="switch"><input id="include-homework" type="checkbox" ${rec.includeHomework?'checked':''}> 加入作业情况</label><textarea id="feedback-draft" rows="${(FEEDBACK_MODES.find(m=>m.key===mode)||FEEDBACK_MODES[1]).rows}" placeholder="手动编辑当前版本草稿，系统不会自动发送。">${escapeHtml(rec.feedbackDrafts[mode] || '')}</textarea><p id="copy-tip" class="copy-tip"></p>`; }
+function teacherWorkspaceHtml(session, student, rec) { const panels = [{id:'feedback',title:'学生家长反馈',html:feedbackPanelHtml(session,student,rec)},{id:'homework',title:'作业布置与检查',html:homeworkHtml(session)},{id:'review',title:'课后复盘',html:reviewHtml(session)},{id:'equipment',title:'实验器材',html:reviewHtml(session)},{id:'handout',title:'讲义问题',html:`<div class="review"><p>讲义问题</p>${renderTagChecks('handoutIssues', HANDOUT_ISSUES, session.postClassReview?.handoutIssues||[])}<input id="handoutLinks" value="${escapeHtml(session.postClassReview?.handoutLinks||'')}" placeholder="关联讲次/模块/具体题号"></div>`},{id:'todo',title:'下节课待办',html:`<div class="review">${renderTagChecks('nextLessonTasks', NEXT_TASKS, session.postClassReview?.nextLessonTasks||[])}<textarea id="teacherReflection" placeholder="教师自由复盘">${escapeHtml(session.postClassReview?.teacherReflection||'')}</textarea></div>`},{id:'history',title:'同讲义历史提醒',html:historicalTipsHtml(session) || '<p class="empty-summary">暂无同讲义历史提醒。</p>'},{id:'class-history',title:'课堂历史信息',html:historyHtml()}]; return `<section class="card session-head"><div><h2>教师工作台｜${escapeHtml(session.sessionName)}</h2><p>${escapeHtml(activeClass()?.name || '')} · ${escapeHtml(session.sessionDate)} · 当前学生：${escapeHtml(student.name)}</p></div><button data-action="go-classroom">返回课堂登记</button></section>${panels.map(p=>`<section class="card teacher-panel"><button class="collapse-title" data-teacher-panel="${p.id}"><span>${p.title}</span><b>${(state.activeTeacherPanel||'feedback')===p.id?'收起':'展开'}</b></button>${(state.activeTeacherPanel||'feedback')===p.id?p.html:''}</section>`).join('')}<nav class="bottom-actions"><button data-action="go-classroom">课堂登记</button><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="open-teacher-homework">作业</button><button data-action="open-teacher-history">历史</button></nav>`; }
+
+sessionHtml = function(session, student, rec) { return state.currentView === 'teacher' ? teacherWorkspaceHtml(session, student, rec) : classroomHtml(session, student, rec); };
+
+const reorganizedRender = render;
+render = function() { state = normalizeState(state); const safe = currentSession(); if (safe) state.sessionId = safe.sessionId; reorganizedRender(); const session = currentSession(); const { student } = current(); const rec = session && student ? ensureStudentRecord(session, student.id) : null; if (session && student && rec) { document.querySelector('.sticky-summary')?.replaceChildren(); document.querySelector('.sticky-summary').innerHTML = `<strong>${escapeHtml(activeClass()?.name || '未选班级')}</strong><span>${escapeHtml(session.sessionName || '未选课堂')}｜${escapeHtml(student.name)}</span><span>${escapeHtml(moduleProgressText(session, rec))}</span><b>${studentSessionProgress(session, rec).done}/${studentSessionProgress(session, rec).total}</b>`; } if (state.scrollToEmptySession) { state.scrollToEmptySession = false; persist(); setTimeout(()=>document.querySelector('#empty-session')?.scrollIntoView({block:'center'})); } bindReorganizedEvents(); };
+function bindReorganizedEvents() {
+  document.querySelectorAll('[data-jump-module]').forEach(b=>b.onclick=()=>{state.activeModuleId=b.dataset.jumpModule; state.expandedModuleIds=[...new Set([...(state.expandedModuleIds||[]), b.dataset.jumpModule])]; persist(); render(); setTimeout(()=>document.querySelector(`#module-${CSS.escape(b.dataset.jumpModule)}`)?.scrollIntoView({block:'start'}));});
+  document.querySelectorAll('[data-toggle-module]').forEach(b=>b.onclick=()=>{ const id=b.dataset.toggleModule; const set=new Set(state.expandedModuleIds||[]); set.has(id)?set.delete(id):set.add(id); state.expandedModuleIds=[...set]; state.activeModuleId=id; persist(); render(); });
+  document.querySelectorAll('[data-teacher-panel]').forEach(b=>b.onclick=()=>{state.activeTeacherPanel=state.activeTeacherPanel===b.dataset.teacherPanel?'':b.dataset.teacherPanel; persist(); render();});
+}
+
+const reorganizedHandleAction = handleAction;
+handleAction = function(action) {
+  const session = currentSession(); const { student } = current();
+  if (action === 'go-teacher') { state.currentView='teacher'; state.activeTeacherPanel ||= 'feedback'; persist(); render(); return; }
+  if (action === 'go-classroom') { state.currentView='classroom'; persist(); render(); return; }
+  if (action === 'scroll-questions') { document.querySelector('#question-register')?.scrollIntoView({block:'start'}); return; }
+  if (action === 'scroll-modules') { document.querySelector('#module-overview')?.scrollIntoView({block:'start'}); return; }
+  if (action === 'open-teacher-homework') { state.currentView='teacher'; state.activeTeacherPanel='homework'; persist(); render(); return; }
+  if (action === 'open-teacher-history') { state.currentView='teacher'; state.activeTeacherPanel='history'; persist(); render(); return; }
+  if ((action === 'prev-student' || action === 'next-student') && session) { const count = activeClass()?.students.length || 0; if (count) state.studentIndex = (state.studentIndex + (action === 'next-student' ? 1 : count - 1)) % count; const st=activeClass()?.students[state.studentIndex]; const rec=st?ensureStudentRecord(session,st.id):null; state.expandedModuleIds=[]; ensureActiveModule(session, rec); persist(); render(); return; }
+  if (action === 'generate-feedback' && session && student) { const rec=ensureStudentRecord(session, student.id); const mode=normalizeFeedbackMode(rec.feedbackMode || DEFAULT_FEEDBACK_MODE); let draft = generateSessionFeedbackByMode(mode, session, student, rec); if (rec.includeHomework || document.querySelector('#include-homework')?.checked) draft += `\n${homeworkSentence(session, student.id)}`; rec.feedbackMode=mode; rec.feedbackDrafts={...(rec.feedbackDrafts||{}), [mode]:draft}; rec.feedbackDraft=draft; persist(); render(); return; }
+  if (action === 'copy-feedback') { const text=document.querySelector('#feedback-draft')?.value || ''; navigator.clipboard?.writeText(text); const tip=document.querySelector('#copy-tip'); if (tip) tip.textContent='已复制当前版本草稿。'; return; }
+  if (action === 'new-session') { reorganizedHandleAction(action); state.currentView='classroom'; if (!(currentSession()?.selectedQuestions||[]).length) state.scrollToEmptySession=true; persist(); render(); return; }
+  return reorganizedHandleAction(action);
+};
+function generateSessionFeedbackByMode(mode, session, student, rec) {
+  const items = (session.selectedQuestions || []).map(i => ({ item:i, q:itemRecord(rec,i) })).filter(x => !x.q.unassigned && !['本题未布置','本节未讲到','缺席未检查','尚未登记'].includes(x.q.incompleteStatus));
+  const issues = items.filter(x => ['hint','wrong','unfinished'].includes(x.q.status)).slice(0, mode==='concise'?1:3);
+  const names = issues.map(x => `“${x.item.questionName}”`).join('、'); const perf=(rec.performance||[]).slice(0,2).join('、'); const note=rec.note?`，${rec.note}`:'';
+  if (mode === 'concise') return `${student.name}今天整体${perf || '能跟上课堂'}。${names ? `${names}需要再巩固，` : ''}提示后能够继续完成，回家建议把相关步骤再顺一遍。`;
+  if (mode === 'professional') return `课堂情况：${student.name}本节课整体状态${perf || '比较稳定'}${note}。\n重点题目：${names || '本节登记题目'}中暴露出审题和步骤表达需要继续稳定，遇到△题时提醒后能够反应过来，不属于完全不会。\n后续建议：课后优先复看代表题的关键条件，订正时把公式、代入和单位写完整。`;
+  return `${student.name}今天这节课整体${perf || '跟得比较稳'}${note}。${names ? `像${names}这几题比较有代表性，主要是条件提取和过程表达还可以更细一点，` : ''}课堂上稍微点一下思路就能接上，说明基础不是空的。课后建议把同类型题再整理一遍，重点看自己是在哪一步卡住。`;
+}
+
+render();
+
+const previousBindReorganizedEvents = bindReorganizedEvents;
+bindReorganizedEvents = function() {
+  previousBindReorganizedEvents();
+  const session = currentSession(); const { student } = current(); if (!session || !student) return;
+  document.querySelectorAll('[data-tag]').forEach(button => button.onclick = () => { const rec=ensureStudentRecord(session, student.id); const tag=button.dataset.tag; rec.performance = (rec.performance||[]).includes(tag) ? rec.performance.filter(x=>x!==tag) : [...(rec.performance||[]), tag]; persist(); render(); });
+  document.querySelector('#note')?.addEventListener('input', e => { const rec=ensureStudentRecord(session, student.id); rec.note=e.target.value; persist(); });
+  document.querySelector('#feedback-draft')?.addEventListener('input', e => { const rec=ensureStudentRecord(session, student.id); const mode=normalizeFeedbackMode(rec.feedbackMode || DEFAULT_FEEDBACK_MODE); rec.feedbackDraft=e.target.value; rec.feedbackDrafts={...(rec.feedbackDrafts||{}), [mode]:e.target.value}; persist(); });
+  document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => { const rec=ensureStudentRecord(session, student.id); const mode=normalizeFeedbackMode(button.dataset.mode); rec.feedbackMode=mode; rec.feedbackDraft=(rec.feedbackDrafts||{})[mode] || ''; state.activeFeedbackMode=mode; persist(); render(); });
+  document.querySelector('#include-homework')?.addEventListener('change', e => { const rec=ensureStudentRecord(session, student.id); rec.includeHomework=e.target.checked; persist(); });
+};
+render();
