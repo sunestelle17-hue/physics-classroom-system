@@ -122,3 +122,26 @@ input[type="checkbox"] { height: 18px; width: 18px; }
   .compact-grid button { font-size: 13px; min-height: 36px; }
   .selected-summary { max-height: 86px; overflow: auto; }
 }
+
+.home-actions, .session-head, .homework-row { display: grid; gap: .75rem; }
+.home-actions { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
+.source-line, .type-line { color: #64748b; font-size: .9rem; margin: .25rem 0; overflow-wrap: anywhere; }
+.type-line em { display:inline-block; margin:.15rem; padding:.12rem .4rem; border-radius:999px; background:#e0f2fe; color:#0369a1; font-style:normal; }
+.check-chip { min-height: 40px; display:flex; align-items:center; gap:.35rem; border:1px solid #dbeafe; border-radius:12px; padding:.4rem .55rem; background:#fff; }
+.review input, .review select, .review textarea, .homework input, .homework select, .feedback textarea, .question-note, .question-type-editor input, .question-type-editor select { width:100%; max-width:100%; box-sizing:border-box; margin:.25rem 0; }
+.warn { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; padding:.6rem; border-radius:12px; }
+.history-row { width:100%; display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:.35rem; text-align:left; margin:.35rem 0; }
+.homework-row { grid-template-columns: minmax(72px,.8fr) repeat(3,minmax(100px,1fr)); align-items:center; border-top:1px solid #e5e7eb; padding:.5rem 0; }
+.question-type-editor details, .hw-item { border:1px solid #e5e7eb; border-radius:12px; padding:.55rem; margin:.5rem 0; background:#fff; }
+@media (max-width: 640px) {
+  body { overflow-x: hidden; }
+  .sticky-summary { grid-template-columns: 1fr 1fr; gap:.25rem; }
+  .homework-row { grid-template-columns: 1fr; }
+  .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bottom-actions { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+  button, select, input { min-height: 42px; }
+}
+.historical-tip ul { margin: .5rem 0; padding-left: 1.2rem; }
+.historical-tip li { margin: .25rem 0; }
+.prep-notes p { white-space: pre-wrap; }
+@media (max-width: 640px) { .historical-tip .inline-form { grid-template-columns: 1fr; } }
