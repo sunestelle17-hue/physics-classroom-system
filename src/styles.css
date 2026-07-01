@@ -98,3 +98,27 @@ input[type="checkbox"] { height: 18px; width: 18px; }
   .mode-switch button { flex: 1 1 auto; font-size: 13px; padding: 0 8px; }
   .tag-grid button, .reasons button { min-height: 34px; padding: 0 10px; }
 }
+.selected-summary { align-items: center; background: #eef6ff; border: 1px dashed #bfdbfe; border-radius: 12px; color: #526071; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; padding: 7px; width: 100%; }
+.selected-summary strong { color: #1d4ed8; font-size: 12px; }
+.selected-chip { background: #dbeafe !important; border-color: #93c5fd !important; color: #1d4ed8 !important; min-height: 30px !important; padding: 0 9px !important; }
+.empty-summary { color: #94a3b8; font-size: 12px; font-weight: 800; }
+.edit-reasons { background: #fff7ed !important; border-color: #fed7aa !important; color: #c2410c !important; min-height: 34px !important; }
+.category-scroll { display: flex; gap: 6px; margin: 7px 0; max-width: 100%; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; width: 100%; }
+.hint-scroll::after { align-self: center; color: #94a3b8; content: '← 横向滑动 →'; flex: 0 0 auto; font-size: 11px; font-weight: 800; padding: 0 4px; }
+.category-scroll button { background: #fff; border: 1px solid #cbd9ee; border-radius: 999px; color: #243047; flex: 0 0 auto; font-weight: 800; min-height: 34px; padding: 0 12px; }
+.category-scroll button.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.reason-detail { width: 100%; }
+.compact-grid { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.compact-grid button { border-radius: 12px; min-height: 34px; padding: 5px 8px; }
+.reasons { display: block; }
+.reasons p { margin: 4px 0 7px; }
+.tag-grid.compact-grid { margin: 8px 0 12px; }
+@media (min-width: 560px) {
+  .compact-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .reasons { padding: 7px; }
+  .category-scroll button { min-height: 36px; padding: 0 10px; }
+  .compact-grid button { font-size: 13px; min-height: 36px; }
+  .selected-summary { max-height: 86px; overflow: auto; }
+}

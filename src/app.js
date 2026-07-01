@@ -12,6 +12,33 @@ const ERROR_REASONS = [
   '不检查', '检查后能发现错误', '容易漏题', '容易漏小问', '只写答案不写过程', '依赖口算', '草稿较乱', '做题顺序不合理', '遇到不会会空着', '愿意订正', '订正较认真', '订正后能理解', '同类题仍会重复错', '其他'
 ];
 const PERFORMANCE_TAGS = ['主动回应', '主动表达', '愿意参与讨论', '补充同学思路', '被点名后能回应', '需要点名提醒', '有自己的想法', '表达完整', '回答简短', '害羞慢热', '注意力飘', '有精神', '状态不错', '进入状态快', '后半段状态下降', '打瞌睡', '明显犯困', '今天比较疲惫', '注意力不集中', '容易走神', '需要多次提醒', '状态慢热', '情绪低落', '做题有点急', '做题比较稳', '节奏偏慢', '节奏偏快', '能坚持完成', '容易放弃', '遇到难题愿意继续想'];
+
+const ERROR_REASON_CATEGORIES = [
+  { key: 'common', label: '常用', items: [] },
+  { key: 'reading', label: '审题理解', items: ['审题', '条件漏看', '关键词没抓住', '读不懂题目', '题意理解偏差', '条件关系没理清', '图文信息对应不上', '不知道题目在问什么', '题目读完没有形成思路', '长题干容易乱', '信息提取不完整', '题干要求看反', '选择正确项 / 错误项看反'] },
+  { key: 'concept', label: '概念公式', items: ['概念', '概念混淆', '公式', '公式选择错误', '公式变形错误', '公式字母写错', '下标写错', '比例关系错误', '不会', '知识点不熟练'] },
+  { key: 'calculation', label: '计算过程', items: ['计算', '抄错数字', '代错数据', '单位', '单位换算错误', '小数点错误', '科学计数法错误', '正负号错误', '中间过程跳步', '结果未化简', '未检查结果是否合理', '过程正确但答案写错'] },
+  { key: 'objective', label: '选择填空', items: ['选择题判断错误', '只看一个选项就作答', '没有逐项验证', '选项比较不完整', '多选题漏选', '多选题错选', '不确定时随意猜', '排除法使用不当', '题干要求看反', '选择正确项 / 错误项看反', '绝对化词语没注意', '图像选项判断错误', '计算选项代入错误', '填空答案不完整', '一空多答漏写', '物理量漏写', '数值正确但单位遗漏', '单位与数值不匹配', '填空顺序写反', '结论方向写反', '关键词缺失', '物理术语填写错误', '符号填写错误', '公式填写不完整', '多空题漏空', '答案超过题目要求', '没按指定形式填写'] },
+  { key: 'writing', label: '书写表达', items: ['错别字', '物理名词写错', '表述不完整', '语言不规范', '口头会但写不完整', '漏答', '容易漏小问', '关键词缺失', '符号写错', '答案写反', '字迹潦草', '卷面不整洁'] },
+  { key: 'experiment', label: '作图实验', items: ['作图', '漏箭头', '漏标注', '方向画反', '力的作用点错误', '力臂垂足漏画', '垂足画错', '多画垂足', '光线方向错误', '虚线实线错误', '电路连接错误', '电表位置错误', '量程选择错误', '滑动变阻器接线错误', '图画得过于随意', '实验步骤顺序错误', '控制变量不完整', '实验目的不清楚', '现象与结论混淆', '结论缺少条件', '不会分析表格', '不会分析图像', '数据处理错误', '实验器材作用不清楚', '操作注意事项遗漏'] },
+  { key: 'habit', label: '学习习惯', items: ['不检查', '检查后能发现错误', '容易漏题', '容易漏小问', '只写答案不写过程', '依赖口算', '草稿较乱', '做题顺序不合理', '遇到不会会空着', '愿意订正', '订正较认真', '订正后能理解', '同类题重复错', '做题有点急', '节奏偏慢', '容易放弃'] },
+  { key: 'more', label: '更多', items: [] },
+];
+const QUESTION_TYPE_RECOMMENDATIONS = {
+  choice: ['题干要求看反', '没有逐项验证', '只看一个选项就作答', '多选题漏选', '多选题错选', '绝对化词语没注意', '图像选项判断错误', '计算选项代入错误'],
+  blank: ['填空答案不完整', '一空多答漏写', '多空题漏空', '关键词缺失', '数值正确但单位遗漏', '填空顺序写反', '没按指定形式填写', '物理术语填写错误'],
+  calculation: ['公式选择错误', '代错数据', '单位', '公式变形错误', '小数点错误', '中间过程跳步', '未检查结果是否合理'],
+  drawing: ['漏箭头', '漏标注', '方向画反', '力的作用点错误', '力臂垂足漏画', '垂足画错', '多画垂足', '虚线实线错误'],
+  experiment: ['实验步骤顺序错误', '控制变量不完整', '现象与结论混淆', '结论缺少条件', '不会分析表格', '不会分析图像', '数据处理错误'],
+};
+const PERFORMANCE_GROUPS = [
+  { key: 'participation', label: '课堂参与', items: ['主动回应', '主动表达', '愿意参与讨论', '补充同学思路', '被点名后能回应', '需要点名提醒'] },
+  { key: 'thinking', label: '思考表达', items: ['有自己的想法', '表达完整', '回答简短', '害羞慢热', '遇到难题愿意继续想', '容易放弃'] },
+  { key: 'energy', label: '精神状态', items: ['有精神', '状态不错', '进入状态快', '状态慢热', '后半段状态下降', '打瞌睡', '明显犯困', '今天比较疲惫', '情绪低落'] },
+  { key: 'focus', label: '专注节奏', items: ['注意力飘', '注意力不集中', '容易走神', '需要多次提醒', '做题有点急', '做题比较稳', '节奏偏慢', '节奏偏快', '能坚持完成'] },
+];
+const RECENT_REASON_LIMIT = 40;
+
 const STATUS_OPTIONS = [
   { key: 'correct', label: '√', text: '独立' },
   { key: 'hint', label: '△', text: '提示' },
@@ -76,7 +103,7 @@ function normalizeState(candidate = {}) {
   const lesson = appData?.lessons.find(l => l.id === candidate.lessonId) || appData?.lessons[0];
   const module = lesson?.modules.find(m => m.id === candidate.moduleId) || lesson?.modules[0];
   const studentIndex = Math.min(Number(candidate.studentIndex) || 0, Math.max((klass?.students.length || 1) - 1, 0));
-  return { gradeId: grade?.id || '', classId: klass?.id || '', lessonId: lesson?.id || '', moduleId: module?.id || '', studentIndex, managerOpen: Boolean(candidate.managerOpen), performanceOpen: Boolean(candidate.performanceOpen), feedbackOpen: Boolean(candidate.feedbackOpen) };
+  return { gradeId: grade?.id || '', classId: klass?.id || '', lessonId: lesson?.id || '', moduleId: module?.id || '', studentIndex, managerOpen: Boolean(candidate.managerOpen), performanceOpen: Boolean(candidate.performanceOpen), feedbackOpen: Boolean(candidate.feedbackOpen), activeReasonCategories: candidate.activeReasonCategories || {}, activePerformanceGroup: candidate.activePerformanceGroup || '', recentReasons: Array.isArray(candidate.recentReasons) ? candidate.recentReasons.slice(0, RECENT_REASON_LIMIT) : [] };
 }
 function qid(moduleId, index) { return `${moduleId}-q${index + 1}`; }
 function current() {
@@ -114,6 +141,60 @@ function progress(lesson, record) {
     return acc;
   }, { done: 0, total: 0 });
 }
+
+function unique(list) { return [...new Set((list || []).filter(Boolean))]; }
+function questionTypeKey(question) {
+  const raw = typeof question === 'object' ? (question.type || question.questionType || question.name || question.title || '') : question;
+  const text = String(raw || '').toLowerCase();
+  if (/选择|choice|single|multiple|多选/.test(text)) return 'choice';
+  if (/填空|blank|fill/.test(text)) return 'blank';
+  if (/计算|calc|应用/.test(text)) return 'calculation';
+  if (/作图|画图|drawing|diagram/.test(text)) return 'drawing';
+  if (/实验|experiment|lab/.test(text)) return 'experiment';
+  return '';
+}
+function questionTitle(question) { return typeof question === 'object' ? (question.title || question.name || question.text || '未命名题目') : question; }
+function questionReasonStats(record, studentId, moduleId) {
+  const studentCounts = {}; const moduleCounts = {};
+  Object.entries(appData.records || {}).forEach(([key, rec]) => {
+    Object.entries(rec.questions || {}).forEach(([id, q]) => (q.reasons || []).forEach(reason => {
+      if (key.endsWith(`:${studentId}`)) studentCounts[reason] = (studentCounts[reason] || 0) + 1;
+      if (id.startsWith(`${moduleId}-`)) moduleCounts[reason] = (moduleCounts[reason] || 0) + 1;
+    }));
+  });
+  return { studentCounts, moduleCounts };
+}
+function orderedReasons(items, selected, question, record, moduleId) {
+  const { student } = current();
+  const { studentCounts, moduleCounts } = questionReasonStats(record, student?.id || '', moduleId);
+  const recommended = QUESTION_TYPE_RECOMMENDATIONS[questionTypeKey(question)] || [];
+  const recent = state.recentReasons || [];
+  return unique([...(selected || []), ...recommended, ...recent, ...items]).sort((a, b) =>
+    (selected.includes(b) - selected.includes(a)) ||
+    ((studentCounts[b] || 0) - (studentCounts[a] || 0)) ||
+    ((moduleCounts[b] || 0) - (moduleCounts[a] || 0)) ||
+    (recommended.includes(b) - recommended.includes(a)) ||
+    (recent.indexOf(a) === -1 ? 99 : recent.indexOf(a)) - (recent.indexOf(b) === -1 ? 99 : recent.indexOf(b))
+  );
+}
+function categoryReasons(category, selected, question, record, moduleId) {
+  const categorized = new Set(ERROR_REASON_CATEGORIES.filter(c => !['common', 'more'].includes(c.key)).flatMap(c => c.items));
+  if (category.key === 'common') return orderedReasons(unique([...(state.recentReasons || []), ...(QUESTION_TYPE_RECOMMENDATIONS[questionTypeKey(question)] || []), ...selected]), selected, question, record, moduleId).slice(0, 6);
+  if (category.key === 'more') return orderedReasons(ERROR_REASONS.filter(r => !categorized.has(r)).concat(['其他']), selected, question, record, moduleId);
+  return orderedReasons(category.items, selected, question, record, moduleId);
+}
+function selectedChips(items, attr) { return items.length ? items.map(item => `<button class="selected-chip" ${attr}="${escapeHtml(item)}">${escapeHtml(item)} ×</button>`).join('') : '<span class="empty-summary">未选择</span>'; }
+function rememberReason(reason) { state.recentReasons = unique([reason, ...(state.recentReasons || [])]).slice(0, RECENT_REASON_LIMIT); }
+function dedupeFeedbackReasons(reasons) {
+  const groups = [['审题', '条件漏看', '关键词没抓住'], ['计算', '代错数据', '抄错数字'], ['单位', '数值正确但单位遗漏', '单位换算错误'], ['漏答', '容易漏小问', '多空题漏空'], ['表述不完整', '关键词缺失', '口头会但写不完整']];
+  const drop = new Set();
+  groups.forEach(group => {
+    const chosen = group.filter(r => reasons.includes(r));
+    chosen.slice(0, -1).forEach(r => drop.add(r));
+  });
+  return reasons.filter(r => !drop.has(r));
+}
+
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
 function selectHtml(label, id, value, options) { return `<label><span>${label}</span><select id="${id}" ${options.length ? '' : 'disabled'}>${options.map(o => `<option value="${escapeHtml(o.value)}" ${String(o.value) === String(value) ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}</select></label>`; }
 function pick(list, salt = '') {
@@ -193,7 +274,7 @@ function summarizeQuestions(lesson, record) {
     counts[q.status] = (counts[q.status] || 0) + 1;
     (q.reasons || []).forEach(reason => reasons.add(reason));
   }));
-  return { counts, reasons: [...reasons] };
+  return { counts, reasons: dedupeFeedbackReasons([...reasons]) };
 }
 function feedbackAdvice(record, reps, reasons) {
   const tags = record.performance || [];
@@ -293,13 +374,20 @@ function render() {
   const studentLabel = student ? `${state.studentIndex + 1} / ${studentCount}` : '0 / 0';
   const perfMarked = (record.performance || []).length || record.note;
   const feedbackMarked = Object.values(record.feedbackDrafts || {}).some(Boolean);
-  document.querySelector('#app').innerHTML = `<div class="sticky-summary"><strong>${escapeHtml(klass?.name || '未选班级')}</strong><span>${escapeHtml(student?.name || '未选学生')}</span><span>${escapeHtml(lesson?.name || '未选讲次')}</span><span>${escapeHtml(module?.name || '未选模块')}</span><b>${prog.done}/${prog.total}</b></div><header class="hero"><div><p class="eyebrow">本地原型 · 自动保存</p><h1>物理课堂登记</h1></div><button class="manage-toggle" data-action="toggle-manager">${state.managerOpen ? '收起管理' : '管理'}</button></header>${state.managerOpen ? rosterManagerHtml(grade, klass) : ''}<section class="card selectors"><div class="current-student"><span>当前学生</span><strong>${escapeHtml(student?.name || '请先添加学生')}</strong><em>${studentLabel}</em></div>${selectHtml('年级', 'grade', state.gradeId, appData.roster.map(g => ({ value: g.id, label: g.name })))}${selectHtml('班级', 'class', state.classId, (grade?.classes || []).map(c => ({ value: c.id, label: c.name })))}${selectHtml('讲次', 'lesson', state.lessonId, appData.lessons.map(l => ({ value: l.id, label: l.name })))}${selectHtml('模块', 'module', state.moduleId, (lesson?.modules || []).map(m => ({ value: m.id, label: m.name })))}${selectHtml('快速跳转', 'student', state.studentIndex, (klass?.students || []).map((s, index) => ({ value: index, label: s.name })))}</section>${!student ? '<section class="card empty">请点击“管理”新增年级、班级和学生。</section>' : `<section class="card student-switch"><button data-action="prev-student">上一位</button><div><strong>${escapeHtml(student.name)}</strong><span>第 ${studentLabel} 位</span></div><button data-action="next-student">下一位</button></section><section class="card module-head"><button data-action="prev-module">上一个模块</button><div><h2>${escapeHtml(module.name)}</h2><p>${escapeHtml(lesson.name)}</p></div><button data-action="next-module">下一个模块</button><label class="switch"><input id="module-unassigned" type="checkbox" ${record.moduleUnassigned[module.id] ? 'checked' : ''}> 模块未布置</label></section><section class="question-list">${module.questions.map((title, index) => questionHtml(module, title, index, record)).join('')}</section><section class="card collapse"><button class="collapse-title" data-action="toggle-performance"><span>课堂表现 ${perfMarked ? '<em>已记录</em>' : ''}</span><b>${state.performanceOpen ? '收起' : '展开'}</b></button>${state.performanceOpen ? `<div class="tag-grid">${PERFORMANCE_TAGS.map(tag => `<button data-tag="${tag}" class="${record.performance.includes(tag) ? 'active' : ''}">${tag}</button>`).join('')}</div><label class="note-label">自由备注<input id="note" value="${escapeHtml(record.note)}" placeholder="例如：力臂漏画垂足，公式写对但计算错。"></label>` : ''}</section><section class="card feedback collapse"><button class="collapse-title" data-action="toggle-feedback"><span>家长反馈 ${feedbackMarked ? '<em>已有草稿</em>' : ''}</span><b>${state.feedbackOpen ? '收起' : '展开'}</b></button>${state.feedbackOpen ? `<div class="feedback-toolbar"><div class="mode-switch">${FEEDBACK_MODES.map(item => `<button data-mode="${item.key}" class="${record.feedbackMode === item.key ? 'active' : ''}">${item.label}${draftBadge(record, item.key)}</button>`).join('')}</div><div class="feedback-actions"><button data-action="generate-feedback">重新生成</button><button data-action="copy-feedback">一键复制</button></div></div><textarea id="feedback-draft" rows="${(FEEDBACK_MODES.find(item => item.key === record.feedbackMode) || FEEDBACK_MODES[1]).rows}" placeholder="点击重新生成当前版本草稿，可继续手动编辑；系统不会自动发送。">${escapeHtml(currentFeedbackDraft(record))}</textarea><p id="copy-tip" class="copy-tip"></p>` : ''}</section><nav class="bottom-actions"><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="open-performance">课堂表现</button><button data-action="open-feedback-generate">生成反馈</button></nav>`}`;
+  document.querySelector('#app').innerHTML = `<div class="sticky-summary"><strong>${escapeHtml(klass?.name || '未选班级')}</strong><span>${escapeHtml(student?.name || '未选学生')}</span><span>${escapeHtml(lesson?.name || '未选讲次')}</span><span>${escapeHtml(module?.name || '未选模块')}</span><b>${prog.done}/${prog.total}</b></div><header class="hero"><div><p class="eyebrow">本地原型 · 自动保存</p><h1>物理课堂登记</h1></div><button class="manage-toggle" data-action="toggle-manager">${state.managerOpen ? '收起管理' : '管理'}</button></header>${state.managerOpen ? rosterManagerHtml(grade, klass) : ''}<section class="card selectors"><div class="current-student"><span>当前学生</span><strong>${escapeHtml(student?.name || '请先添加学生')}</strong><em>${studentLabel}</em></div>${selectHtml('年级', 'grade', state.gradeId, appData.roster.map(g => ({ value: g.id, label: g.name })))}${selectHtml('班级', 'class', state.classId, (grade?.classes || []).map(c => ({ value: c.id, label: c.name })))}${selectHtml('讲次', 'lesson', state.lessonId, appData.lessons.map(l => ({ value: l.id, label: l.name })))}${selectHtml('模块', 'module', state.moduleId, (lesson?.modules || []).map(m => ({ value: m.id, label: m.name })))}${selectHtml('快速跳转', 'student', state.studentIndex, (klass?.students || []).map((s, index) => ({ value: index, label: s.name })))}</section>${!student ? '<section class="card empty">请点击“管理”新增年级、班级和学生。</section>' : `<section class="card student-switch"><button data-action="prev-student">上一位</button><div><strong>${escapeHtml(student.name)}</strong><span>第 ${studentLabel} 位</span></div><button data-action="next-student">下一位</button></section><section class="card module-head"><button data-action="prev-module">上一个模块</button><div><h2>${escapeHtml(module.name)}</h2><p>${escapeHtml(lesson.name)}</p></div><button data-action="next-module">下一个模块</button><label class="switch"><input id="module-unassigned" type="checkbox" ${record.moduleUnassigned[module.id] ? 'checked' : ''}> 模块未布置</label></section><section class="question-list">${module.questions.map((question, index) => questionHtml(module, question, index, record)).join('')}</section><section class="card collapse"><button class="collapse-title" data-action="toggle-performance"><span>课堂表现 ${perfMarked ? '<em>已记录</em>' : ''}</span><b>${state.performanceOpen ? '收起' : '展开'}</b></button>${state.performanceOpen ? `<div class="selected-summary"><strong>已选：</strong>${selectedChips(record.performance || [], 'data-tag')}</div><div class="category-scroll hint-scroll">${PERFORMANCE_GROUPS.map(group => `<button data-perf-group="${group.key}" class="${state.activePerformanceGroup === group.key ? 'active' : ''}">${group.label}</button>`).join('')}</div>${state.activePerformanceGroup ? `<div class="tag-grid compact-grid">${(PERFORMANCE_GROUPS.find(g => g.key === state.activePerformanceGroup)?.items || []).map(tag => `<button data-tag="${tag}" class="${record.performance.includes(tag) ? 'active' : ''}">${tag}</button>`).join('')}</div>` : ''}<label class="note-label">自由备注<input id="note" value="${escapeHtml(record.note)}" placeholder="例如：力臂漏画垂足，公式写对但计算错。"></label>` : ''}</section><section class="card feedback collapse"><button class="collapse-title" data-action="toggle-feedback"><span>家长反馈 ${feedbackMarked ? '<em>已有草稿</em>' : ''}</span><b>${state.feedbackOpen ? '收起' : '展开'}</b></button>${state.feedbackOpen ? `<div class="feedback-toolbar"><div class="mode-switch">${FEEDBACK_MODES.map(item => `<button data-mode="${item.key}" class="${record.feedbackMode === item.key ? 'active' : ''}">${item.label}${draftBadge(record, item.key)}</button>`).join('')}</div><div class="feedback-actions"><button data-action="generate-feedback">重新生成</button><button data-action="copy-feedback">一键复制</button></div></div><textarea id="feedback-draft" rows="${(FEEDBACK_MODES.find(item => item.key === record.feedbackMode) || FEEDBACK_MODES[1]).rows}" placeholder="点击重新生成当前版本草稿，可继续手动编辑；系统不会自动发送。">${escapeHtml(currentFeedbackDraft(record))}</textarea><p id="copy-tip" class="copy-tip"></p>` : ''}</section><nav class="bottom-actions"><button data-action="prev-student">上一位</button><button data-action="next-student">下一位</button><button data-action="open-performance">课堂表现</button><button data-action="open-feedback-generate">生成反馈</button></nav>`}`;
   bindEvents();
 }
 
-function questionHtml(module, title, index, record) {
-  const id = qid(module.id, index); const question = record.questions[id] || { status: 'blank', reasons: [], unassigned: false }; const disabled = record.moduleUnassigned[module.id] || question.unassigned; const reasons = question.reasons || [];
-  return `<article class="card question ${disabled ? 'muted' : ''}"><div class="question-title"><h3>${index + 1}. ${escapeHtml(title)}</h3><label><input data-unassigned="${id}" type="checkbox" ${question.unassigned ? 'checked' : ''}> 未布置</label></div><div class="status-grid">${STATUS_OPTIONS.map(opt => `<button data-status="${id}:${opt.key}" ${disabled ? 'disabled' : ''} class="${question.status === opt.key ? `picked ${opt.key}` : ''}"><b>${opt.label}</b><span>${opt.text}</span></button>`).join('')}<button class="clear-status" data-status="${id}:blank" ${disabled ? 'disabled' : ''}>清除</button></div>${(question.status === 'hint' || question.status === 'wrong') && !disabled ? `<div class="reasons"><p>错因（可多选）</p>${ERROR_REASONS.map(reason => `<button data-reason="${id}:${reason}" class="${reasons.includes(reason) ? 'active' : ''}">${reason}</button>`).join('')}</div>` : ''}</article>`;
+function questionHtml(module, questionItem, index, record) {
+  const id = qid(module.id, index);
+  const question = record.questions[id] || { status: 'blank', reasons: [], unassigned: false };
+  const disabled = record.moduleUnassigned[module.id] || question.unassigned;
+  const reasons = question.reasons || [];
+  const activeKey = (state.activeReasonCategories || {})[id] || '';
+  const activeCategory = ERROR_REASON_CATEGORIES.find(c => c.key === activeKey);
+  const detailReasons = activeCategory ? categoryReasons(activeCategory, reasons, questionItem, record, module.id) : [];
+  const reasonsHtml = (question.status === 'hint' || question.status === 'wrong') && !disabled ? `<div class="reasons"><div class="selected-summary"><strong>已选：</strong>${selectedChips(reasons, 'data-reason-remove')}</div><button class="edit-reasons" data-reason-edit="${id}">修改错因</button><div class="category-scroll hint-scroll" aria-label="错因分类，横向滑动查看更多">${ERROR_REASON_CATEGORIES.map(category => `<button data-reason-category="${id}:${category.key}" class="${activeKey === category.key ? 'active' : ''}">${category.label}</button>`).join('')}</div>${activeCategory ? `<div class="reason-detail"><p>${activeCategory.label} · 可多选</p><div class="compact-grid">${detailReasons.map(reason => `<button data-reason="${id}:${reason}" class="${reasons.includes(reason) ? 'active' : ''}">${escapeHtml(reason)}</button>`).join('')}</div></div>` : ''}</div>` : '';
+  return `<article class="card question ${disabled ? 'muted' : ''}"><div class="question-title"><h3>${index + 1}. ${escapeHtml(questionTitle(questionItem))}</h3><label><input data-unassigned="${id}" type="checkbox" ${question.unassigned ? 'checked' : ''}> 未布置</label></div><div class="status-grid">${STATUS_OPTIONS.map(opt => `<button data-status="${id}:${opt.key}" ${disabled ? 'disabled' : ''} class="${question.status === opt.key ? `picked ${opt.key}` : ''}"><b>${opt.label}</b><span>${opt.text}</span></button>`).join('')}<button class="clear-status" data-status="${id}:blank" ${disabled ? 'disabled' : ''}>清除</button></div>${reasonsHtml}</article>`;
 }
 
 function confirmTwice(message) { return window.confirm(`${message}\n\n第一次确认：是否继续？`) && window.confirm(`${message}\n\n第二次确认：此操作不可撤销。`); }
@@ -315,9 +403,22 @@ function bindEvents() {
   document.querySelectorAll('[data-student]').forEach(button => button.onclick = () => { state = { ...state, studentIndex: Number(button.dataset.student) }; persist(); render(); });
   document.querySelector('#module-unassigned')?.addEventListener('change', e => updateRecord(record => ({ ...record, moduleUnassigned: { ...record.moduleUnassigned, [current().module.id]: e.target.checked } })));
   document.querySelectorAll('[data-unassigned]').forEach(input => input.onchange = () => patchQuestion(input.dataset.unassigned, { unassigned: input.checked }));
-  document.querySelectorAll('[data-status]').forEach(button => button.onclick = () => { const [id, status] = button.dataset.status.split(':'); const currentStatus = current().record.questions[id]?.status || 'blank'; patchQuestion(id, { status: currentStatus === status ? 'blank' : status, reasons: status === 'correct' || status === 'unfinished' || status === 'blank' ? [] : (current().record.questions[id]?.reasons || []) }); });
-  document.querySelectorAll('[data-reason]').forEach(button => button.onclick = () => { const [id, reason] = button.dataset.reason.split(':'); const reasons = current().record.questions[id]?.reasons || []; patchQuestion(id, { reasons: reasons.includes(reason) ? reasons.filter(item => item !== reason) : [...reasons, reason] }); });
+  document.querySelectorAll('[data-status]').forEach(button => button.onclick = () => {
+    const [id, status] = button.dataset.status.split(':');
+    const q = current().record.questions[id] || {};
+    const currentStatus = q.status || 'blank';
+    const nextStatus = currentStatus === status ? 'blank' : status;
+    let reasons = q.reasons || [];
+    if (reasons.length && ['correct', 'unfinished', 'blank'].includes(nextStatus) && !window.confirm('是否同时清除已选错因？\n选择“取消”会仅恢复为空白/切换状态并保留错因。')) reasons = q.reasons || [];
+    else if (['correct', 'unfinished', 'blank'].includes(nextStatus)) reasons = [];
+    patchQuestion(id, { status: nextStatus, reasons });
+  });
+  document.querySelectorAll('[data-reason]').forEach(button => button.onclick = () => { const [id, reason] = button.dataset.reason.split(':'); const reasons = current().record.questions[id]?.reasons || []; const next = reasons.includes(reason) ? reasons.filter(item => item !== reason) : [...reasons, reason]; if (!reasons.includes(reason)) { rememberReason(reason); state.activeReasonCategories = { ...(state.activeReasonCategories || {}), [id]: '' }; } patchQuestion(id, { reasons: next }); });
+  document.querySelectorAll('[data-reason-remove]').forEach(button => button.onclick = () => { const reason = button.dataset.reasonRemove; const article = button.closest('.question'); const id = article?.querySelector('[data-status]')?.dataset.status.split(':')[0]; const reasons = current().record.questions[id]?.reasons || []; patchQuestion(id, { reasons: reasons.filter(item => item !== reason) }); });
+  document.querySelectorAll('[data-reason-category]').forEach(button => button.onclick = () => { const [id, key] = button.dataset.reasonCategory.split(':'); const active = (state.activeReasonCategories || {})[id]; state.activeReasonCategories = { ...(state.activeReasonCategories || {}), [id]: active === key ? '' : key }; persist(); render(); });
+  document.querySelectorAll('[data-reason-edit]').forEach(button => button.onclick = () => { const id = button.dataset.reasonEdit; state.activeReasonCategories = { ...(state.activeReasonCategories || {}), [id]: (state.activeReasonCategories || {})[id] || 'common' }; persist(); render(); });
   document.querySelectorAll('[data-tag]').forEach(button => button.onclick = () => { const tag = button.dataset.tag; updateRecord(record => ({ ...record, performance: record.performance.includes(tag) ? record.performance.filter(item => item !== tag) : [...record.performance, tag] })); });
+  document.querySelectorAll('[data-perf-group]').forEach(button => button.onclick = () => { state.activePerformanceGroup = state.activePerformanceGroup === button.dataset.perfGroup ? '' : button.dataset.perfGroup; persist(); render(); });
   document.querySelector('#note')?.addEventListener('input', e => updateRecord(record => ({ ...record, note: e.target.value }), false));
   document.querySelector('#feedback-draft')?.addEventListener('input', e => updateRecord(record => ({ ...record, feedbackDraft: e.target.value, feedbackDrafts: { ...(record.feedbackDrafts || {}), [record.feedbackMode]: e.target.value } }), false));
   document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => updateRecord(record => ({ ...record, feedbackMode: normalizeFeedbackMode(button.dataset.mode), feedbackDraft: (record.feedbackDrafts || {})[normalizeFeedbackMode(button.dataset.mode)] || '' })));
